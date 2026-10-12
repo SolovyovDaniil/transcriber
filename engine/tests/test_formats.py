@@ -70,4 +70,4 @@ def test_write_srt_utf8_with_bom(tmp_path):
     formats.write(t, "srt", path)
     raw = path.read_bytes()
     assert raw.startswith(b"\xef\xbb\xbf")
-    assert raw[3:].decode("utf-8") == formats.to_srt(t)
+    assert raw[3:].decode("utf-8") == formats.to_srt(t).replace("\n", "\r\n")

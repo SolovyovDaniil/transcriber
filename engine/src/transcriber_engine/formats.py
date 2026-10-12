@@ -47,6 +47,7 @@ def render(t: Transcript, fmt: str) -> str:
 
 def write(t: Transcript, fmt: str, path: str | Path) -> Path:
     path = Path(path)
-    # utf-8-sig: Windows players and editors (MPC-HC, old Notepad) detect UTF-8 by the BOM.
-    path.write_text(render(t, fmt), encoding="utf-8-sig")
+    # utf-8-sig and CRLF: what Windows players and editors (MPC-HC, old Notepad) expect.
+    # Explicit newline keeps the output identical on every OS.
+    path.write_text(render(t, fmt), encoding="utf-8-sig", newline="\r\n")
     return path
