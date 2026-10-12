@@ -15,6 +15,7 @@ import threading
 from pathlib import Path
 
 from . import __version__, formats, hardware, models
+from .runtime import setup_dll_search_path
 from .server import Server
 from .store import ModelStore
 from .transcriber import Options, Transcriber
@@ -81,6 +82,7 @@ def transcribe_cli(args: argparse.Namespace, models_dir: Path) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    setup_dll_search_path()
     parser = argparse.ArgumentParser(prog="transcriber-engine")
     parser.add_argument("--models-dir", type=Path, default=default_models_dir())
     sub = parser.add_subparsers(dest="command")

@@ -5,6 +5,7 @@ on:
     paths: ["engine/**", ".github/workflows/engine.yml"]
   pull_request:
     paths: ["engine/**", ".github/workflows/engine.yml"]
+  workflow_dispatch:
 
 jobs:
   test:
@@ -22,3 +23,37 @@ jobs:
           python-version: "3.11"
       - run: pip install -e ".[dev]"
       - run: pytest
+
+  build-windows:
+    needs: test
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: engine
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install . -r packaging/requirements-gpu.txt
+      - run: pyinstaller packaging/engine.spec --noconfirm
+      - name: Check bundled CUDA libraries
+        run: |
+          $internal = "dist/transcriber-engine/_internal"
+          foreach ($dll in "cublas64_12.dll", "cublasLt64_12.dll", "cudnn64_9.dll") {
+            if (-not (Test-Path "$internal/$dll")) { throw "missing $dll" }
+          }
+          if (-not (Test-Path "$internal/faster_whisper/assets/silero_vad_v6.onnx")) { throw "missing VAD model" }
+      - name: Smoke test (no GPU on the runner, CPU path)
+        run: |
+          $exe = "dist/transcriber-engine/transcriber-engine.exe"
+          & $exe info
+          $out = '{"id":1,"method":"system.info"}', '{"id":2,"method":"shutdown"}' | & $exe
+          $out
+          if (-not ($out -match '"id": 2, "result": \{"ok": true\}')) { throw "protocol smoke test failed" }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: transcriber-engine-windows
+          path: engine/dist/transcriber-engine
+          retention-days: 14
