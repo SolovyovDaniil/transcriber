@@ -43,7 +43,7 @@ jobs:
       - name: Build engine
         working-directory: engine
         run: |
-          pip install . -r packaging/requirements-gpu.txt
+          pip install . -r packaging/requirements-build.txt
           pyinstaller packaging/engine.spec --noconfirm
       - uses: actions/setup-node@v4
         with:

@@ -26,13 +26,30 @@ class FakeStore:
         self.downloaded.add(name)
 
 
+class FakeCuda:
+    def __init__(self, state="ready", fail=None):
+        self.state = state
+        self.fail = fail
+
+    def status(self):
+        return self.state
+
+    def install(self, on_progress):
+        on_progress(10, 20)
+        if self.fail:
+            raise self.fail
+        on_progress(20, 20)
+        self.state = "ready"
+
+
 class Harness:
-    def __init__(self, model=None):
+    def __init__(self, model=None, cuda=None):
         self.lines = []
         self.store = FakeStore()
         self.model = model or FakeModel([fw_segment(0.0, 1.0, " Привет"), fw_segment(1.0, 2.0, " мир")])
         transcriber = Transcriber(RTX_4060, "/m", load_model=ModelLoader(default=self.model))
-        self.server = Server(self.lines.append, RTX_4060, transcriber, self.store, version="0.1.0")
+        self.cuda = cuda or FakeCuda()
+        self.server = Server(self.lines.append, RTX_4060, transcriber, self.store, version="0.1.0", cuda=self.cuda)
         self._next_id = 0
 
     def call(self, method, params=None):
@@ -189,3 +206,37 @@ def test_transcribe_unwritable_srt_path_fails_job(h, tmp_path):
 
     assert h.events("job.status")[-1]["status"] == "error"
     assert h.events("job.done") == []
+
+
+def test_system_info_reports_cuda_runtime():
+    h = Harness(cuda=FakeCuda("missing"))
+    info = h.call("system.info")["result"]
+    assert info["cuda_runtime"] == "missing"
+    assert info["cuda_download_size"] > 1_000_000_000
+    h.server.close()
+
+
+def test_runtime_download_flow():
+    h = Harness(cuda=FakeCuda("missing"))
+    assert h.call("runtime.download")["result"] == {"started": True}
+    h.server.wait_downloads()
+    assert h.events("runtime.progress")[-1] == {"downloaded": 20, "total": 20}
+    assert h.events("runtime.done") == [{}]
+    assert h.call("system.info")["result"]["cuda_runtime"] == "ready"
+    h.server.close()
+
+
+def test_runtime_download_error():
+    h = Harness(cuda=FakeCuda("missing", fail=OSError("Connection reset")))
+    h.call("runtime.download")
+    h.server.wait_downloads()
+    assert h.events("runtime.error") == [{"error": "Connection reset"}]
+    h.server.close()
+
+
+def test_transcribe_refused_until_cuda_installed(tmp_path):
+    h = Harness(cuda=FakeCuda("missing"))
+    audio = tmp_path / "a.mp3"
+    audio.write_bytes(b"x")
+    assert h.call("transcribe.start", {"path": str(audio)})["error"]["code"] == "cuda_missing"
+    h.server.close()

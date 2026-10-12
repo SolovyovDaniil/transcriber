@@ -7,7 +7,7 @@ import os
 import threading
 from typing import Callable
 
-from . import formats, models, protocol
+from . import cuda_runtime, formats, models, protocol
 from .hardware import SystemInfo
 from .jobs import Job, JobQueue, Status
 from .result import Transcript
@@ -28,6 +28,20 @@ class NotFound(Exception):
     pass
 
 
+class CudaMissing(Exception):
+    pass
+
+
+class _NoCuda:
+    """Default when no runtime manager is given: nothing to download."""
+
+    def status(self) -> str:
+        return "not_needed"
+
+    def install(self, on_progress) -> None:
+        pass
+
+
 def _require(params: dict, key: str, kind: type = str):
     value = params.get(key)
     if not isinstance(value, kind):
@@ -43,18 +57,21 @@ class Server:
         transcriber: Transcriber,
         store,
         version: str,
+        cuda=None,
     ):
         self._write = write
         self.system = system
         self.transcriber = transcriber
         self.store = store
         self.version = version
+        self.cuda = cuda or _NoCuda()
         self.jobs = JobQueue(run=self._run_job, on_status=self._job_status)
         self._downloads: list[threading.Thread] = []
         self._methods = {
             "system.info": self.system_info,
             "models.list": self.models_list,
             "models.download": self.models_download,
+            "runtime.download": self.runtime_download,
             "transcribe.start": self.transcribe_start,
             "transcribe.cancel": self.transcribe_cancel,
             "export": self.export,
@@ -82,6 +99,8 @@ class Server:
             self._write(protocol.error(req.id, "invalid_params", str(e)))
         except NotFound as e:
             self._write(protocol.error(req.id, "not_found", str(e)))
+        except CudaMissing as e:
+            self._write(protocol.error(req.id, "cuda_missing", str(e)))
         except Exception as e:
             self._write(protocol.error(req.id, "internal_error", f"{type(e).__name__}: {e}"))
         else:
@@ -114,6 +133,8 @@ class Server:
             "recommended_model": recommended,
             "compute_types": models.compute_chain(recommended, self.system.device, vram),
             "loaded": self.transcriber.loaded,
+            "cuda_runtime": self.cuda.status(),
+            "cuda_download_size": cuda_runtime.DOWNLOAD_SIZE,
         }
 
     def models_list(self, params: dict) -> dict:
@@ -152,6 +173,22 @@ class Server:
         thread.start()
         return {"started": True}
 
+    def runtime_download(self, params: dict) -> dict:
+        def run():
+            try:
+                self.cuda.install(
+                    lambda done, total: self._emit("runtime.progress", {"downloaded": done, "total": total})
+                )
+            except Exception as e:
+                self._emit("runtime.error", {"error": str(e) or type(e).__name__})
+            else:
+                self._emit("runtime.done", {})
+
+        thread = threading.Thread(target=run, name="download-cuda", daemon=True)
+        self._downloads.append(thread)
+        thread.start()
+        return {"started": True}
+
     def transcribe_start(self, params: dict) -> dict:
         path = _require(params, "path")
         options = Options.from_params(params.get("options") or {})
@@ -160,6 +197,8 @@ class Server:
             raise InvalidParams("'srt_path' must be a string")
         if not os.path.isfile(path):
             raise NotFound(f"File not found: {path}")
+        if self.cuda.status() == "missing":
+            raise CudaMissing("CUDA libraries are not installed yet")
         job = self.jobs.submit(path, JobSpec(options, srt_path))
         return {"job_id": job.id}
 

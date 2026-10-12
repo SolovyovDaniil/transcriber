@@ -14,6 +14,7 @@ export type EngineApi = {
   systemInfo(): Promise<SystemInfo>;
   models(): Promise<ModelEntry[]>;
   downloadModel(model: string): Promise<unknown>;
+  downloadRuntime(): Promise<unknown>;
   transcribe(path: string, srtPath: string, options: TranscribeOptions): Promise<{ job_id: string }>;
   cancel(jobId: string): Promise<{ cancelled: boolean }>;
   exportSrt(transcript: Transcript, path: string): Promise<{ path: string }>;
@@ -31,6 +32,7 @@ const tauriEngine: EngineApi = {
   systemInfo: () => request("system.info"),
   models: () => request<{ models: ModelEntry[] }>("models.list").then((r) => r.models),
   downloadModel: (model) => request("models.download", { model }),
+  downloadRuntime: () => request("runtime.download"),
   transcribe: (path, srtPath, options) => request("transcribe.start", { path, srt_path: srtPath, options }),
   cancel: (jobId) => request("transcribe.cancel", { job_id: jobId }),
   exportSrt: (transcript, path) => request("export", { transcript, format: "srt", path }),

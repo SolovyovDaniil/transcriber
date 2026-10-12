@@ -1,4 +1,0 @@
-# CUDA 12 runtime libraries for ctranslate2 4.x on Windows (bundled into the build).
-nvidia-cublas-cu12>=12.4,<13
-nvidia-cudnn-cu12>=9.1,<10
-pyinstaller>=6.10

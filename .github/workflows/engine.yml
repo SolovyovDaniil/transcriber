@@ -36,15 +36,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install . -r packaging/requirements-gpu.txt
+      - run: pip install . -r packaging/requirements-build.txt
       - run: pyinstaller packaging/engine.spec --noconfirm
-      - name: Check bundled CUDA libraries
+      - name: Check bundled files
         run: |
           $internal = "dist/transcriber-engine/_internal"
-          foreach ($dll in "cublas64_12.dll", "cublasLt64_12.dll", "cudnn64_9.dll") {
-            if (-not (Test-Path "$internal/$dll")) { throw "missing $dll" }
-          }
           if (-not (Test-Path "$internal/faster_whisper/assets/silero_vad_v6.onnx")) { throw "missing VAD model" }
+          if (Test-Path "$internal/cublasLt64_12.dll") { throw "CUDA must not be bundled (NSIS 2 GB limit)" }
+          "{0:N0} MB" -f ((Get-ChildItem dist/transcriber-engine -Recurse | Measure-Object Length -Sum).Sum / 1MB)
       - name: Smoke test (no GPU on the runner, CPU path)
         run: |
           $exe = "dist/transcriber-engine/transcriber-engine.exe"
@@ -52,6 +51,7 @@ jobs:
           $out = '{"id":1,"method":"system.info"}', '{"id":2,"method":"shutdown"}' | & $exe
           $out
           if (-not ($out -match '"id": 2, "result": \{"ok": true\}')) { throw "protocol smoke test failed" }
+          if (-not ($out -match '"cuda_runtime": "not_needed"')) { throw "runner has no GPU, CUDA status should be not_needed" }
       - uses: actions/upload-artifact@v4
         with:
           name: transcriber-engine-windows

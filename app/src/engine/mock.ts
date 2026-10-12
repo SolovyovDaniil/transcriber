@@ -34,6 +34,7 @@ export function createMockEngine(params: URLSearchParams): EngineApi {
     { name: "large-v3", size_mb: 3100, downloaded: !scenario.includes("-"), recommended: true },
     { name: "large-v3-turbo", size_mb: 1600, downloaded: false, recommended: false },
   ];
+  let cudaReady = !scenario.includes("-");
   const queue: { id: string; path: string; srt: string }[] = [];
   let running = false;
   let seq = 0;
@@ -86,10 +87,26 @@ export function createMockEngine(params: URLSearchParams): EngineApi {
         recommended_model: cpu ? "large-v3-turbo" : "large-v3",
         compute_types: cpu ? ["int8"] : ["float16", "int8_float16", "int8"],
         loaded: null,
+        cuda_runtime: cpu ? "not_needed" : cudaReady ? "ready" : "missing",
+        cuda_download_size: 1296231748,
       };
     },
     async models() {
       return models.map((m) => ({ ...m }));
+    },
+    async downloadRuntime() {
+      const total = 1296231748;
+      let done = 0;
+      const tick = setInterval(() => {
+        done = Math.min(total, done + total / 15);
+        emit({ name: "runtime.progress", data: { downloaded: done, total } });
+        if (done >= total) {
+          clearInterval(tick);
+          cudaReady = true;
+          emit({ name: "runtime.done", data: {} });
+        }
+      }, 200);
+      return { started: true };
     },
     async downloadModel(name) {
       const m = models.find((x) => x.name === name)!;

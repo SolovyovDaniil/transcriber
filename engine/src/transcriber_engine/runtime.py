@@ -1,7 +1,7 @@
 """Make CUDA/cuDNN DLLs findable on Windows before ctranslate2 loads them.
 
 ctranslate2.dll loads cuBLAS and cuDNN lazily by name, so they must be on the DLL
-search path. We ship them either next to the frozen engine (PyInstaller) or get them
+search path. They come from the folder the app downloads them to (cuda_runtime), or
 from the nvidia-cublas-cu12 / nvidia-cudnn-cu12 pip packages in a dev venv.
 """
 
@@ -23,20 +23,29 @@ def cuda_dll_dirs(roots: list[Path]) -> list[Path]:
     return found
 
 
-def _roots() -> list[Path]:
-    roots = []
+def _roots(extra: list[Path]) -> list[Path]:
+    roots = list(extra)
     if getattr(sys, "frozen", False):
         roots.append(Path(getattr(sys, "_MEIPASS", Path(sys.executable).parent)))
     roots.extend(Path(p) for p in sys.path if p and Path(p).name == "site-packages")
     return roots
 
 
-def setup_dll_search_path() -> list[Path]:
+def search_dirs(extra: list[Path]) -> list[Path]:
+    """Directories that hold CUDA DLLs right now (re-scanned on every call)."""
+    return cuda_dll_dirs(_roots(extra))
+
+
+def activate(dirs: list[Path]) -> None:
     if sys.platform != "win32":
-        return []
-    dirs = cuda_dll_dirs(_roots())
+        return
     for d in dirs:
         os.add_dll_directory(str(d))
     # LoadLibrary without LOAD_LIBRARY_SEARCH_USER_DIRS only looks at PATH.
     os.environ["PATH"] = os.pathsep.join([*map(str, dirs), os.environ.get("PATH", "")])
+
+
+def setup_dll_search_path(extra: list[Path]) -> list[Path]:
+    dirs = search_dirs(extra) if sys.platform == "win32" else []
+    activate(dirs)
     return dirs

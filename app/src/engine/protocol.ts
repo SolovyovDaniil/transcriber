@@ -12,6 +12,8 @@ export type SystemInfo = {
   recommended_model: string;
   compute_types: string[];
   loaded: [string, string] | null;
+  cuda_runtime: "ready" | "missing" | "not_needed";
+  cuda_download_size: number;
 };
 
 export type ModelEntry = { name: string; size_mb: number; downloaded: boolean; recommended: boolean };
@@ -33,7 +35,10 @@ export type EngineEvent =
   | { name: "job.done"; data: { job_id: string; transcript: Transcript; srt_path: string | null } }
   | { name: "model.progress"; data: { model: string; downloaded: number; total: number } }
   | { name: "model.done"; data: { model: string } }
-  | { name: "model.error"; data: { model: string; error: string } };
+  | { name: "model.error"; data: { model: string; error: string } }
+  | { name: "runtime.progress"; data: { downloaded: number; total: number } }
+  | { name: "runtime.done"; data: Record<string, never> }
+  | { name: "runtime.error"; data: { error: string } };
 
 export type EngineStatus =
   | { state: "starting" }

@@ -35,19 +35,23 @@ py -3.11 -m venv .venv
 .venv\Scripts\pip install nvidia-cublas-cu12 nvidia-cudnn-cu12==9.*
 ```
 
-В собранном `.exe` эти библиотеки уже лежат внутри.
+В собранном приложении их скачивает само приложение при первом запуске (см. ниже).
 
 ## Сборка движка в `.exe` (Windows)
 
 ```powershell
 cd engine
-.venv\Scripts\pip install . -r packaging\requirements-gpu.txt
+.venv\Scripts\pip install . -r packaging\requirements-build.txt
 .venv\Scripts\pyinstaller packaging\engine.spec --noconfirm
 dist\transcriber-engine\transcriber-engine.exe info
 ```
 
-Готовая сборка (папка `transcriber-engine/` с DLL от CUDA и cuDNN) также собирается
-в GitHub Actions — артефакт `transcriber-engine-windows` в workflow `engine`.
+Библиотеки CUDA (cuBLAS, cuDNN, ~1,6 ГБ) в сборку не входят: вместе с движком они не
+помещаются в установщик NSIS (предел 2 ГБ). Приложение скачивает их при первом запуске
+с PyPI (официальные пакеты NVIDIA, с проверкой SHA-256) в `%LOCALAPPDATA%\Transcriber\cuda`.
+
+Готовая сборка также собирается в GitHub Actions: артефакт `transcriber-engine-windows`
+в workflow `engine`.
 
 ## Приложение: запуск в режиме разработки (Windows)
 

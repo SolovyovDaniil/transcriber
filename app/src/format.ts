@@ -10,8 +10,8 @@ export function timestamp(seconds: number): string {
 /** 3250585600 bytes -> "3,0 ГБ"; 524288000 -> "500 МБ" */
 export function size(bytes: number): string {
   const mb = bytes / (1024 * 1024);
-  if (mb < 1000) return `${Math.round(mb)} МБ`;
-  return `${(mb / 1024).toFixed(1).replace(".", ",")} ГБ`;
+  if (mb < 1000) return `${Math.round(mb)}\u00a0МБ`;
+  return `${(mb / 1024).toFixed(1).replace(".", ",")}\u00a0ГБ`;
 }
 
 export const MODEL_INFO: Record<string, { title: string; note: string }> = {

@@ -146,7 +146,8 @@ function Shell() {
     return downloaded[0] ?? null;
   }, [eng.models, eng.system, settings.model]);
 
-  const ready = eng.status.state === "running" && !!model;
+  const cudaMissing = eng.system?.cuda_runtime === "missing";
+  const ready = eng.status.state === "running" && !!model && !cudaMissing;
 
   const addFiles = useCallback(
     async (paths: string[]) => {
@@ -204,6 +205,7 @@ function Shell() {
   };
 
   const needsModel = eng.status.state === "running" && eng.models !== null && !model;
+  const needsSetup = needsModel || (eng.status.state === "running" && cudaMissing);
   const booting = eng.status.state === "starting" || (eng.status.state === "running" && eng.models === null && !eng.loadError);
 
   return (
@@ -213,7 +215,7 @@ function Shell() {
           <ClosedCaptionRegular className={s.logo} />
           <Subtitle2 as="h1">Transcriber</Subtitle2>
         </div>
-        {!needsModel && (
+        {!needsSetup && (
           <Button appearance="primary" icon={<AddRegular />} disabled={!ready} onClick={async () => addFiles(await pickMediaFiles())}>
             Добавить файлы
           </Button>
@@ -266,12 +268,15 @@ function Shell() {
         <div className={s.center}>
           <Spinner label="Запускаем движок распознавания" />
         </div>
-      ) : needsModel ? (
+      ) : needsSetup ? (
         <ModelSetup
           models={eng.models!}
+          needModel={needsModel}
+          cudaMissing={cudaMissing}
+          cudaSize={eng.system?.cuda_download_size ?? 0}
           initial={eng.system?.recommended_model ?? "large-v3"}
           download={eng.download}
-          onDownload={eng.startDownload}
+          onStart={eng.startSetup}
         />
       ) : (
         <main className={s.main}>
@@ -310,7 +315,7 @@ function Shell() {
         models={eng.models ?? []}
         system={eng.system}
         download={eng.download}
-        onDownload={eng.startDownload}
+        onDownload={eng.downloadModel}
         onPickFolder={chooseFolder}
       />
     </div>

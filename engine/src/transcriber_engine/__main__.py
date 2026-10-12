@@ -14,8 +14,8 @@ import sys
 import threading
 from pathlib import Path
 
-from . import __version__, formats, hardware, models
-from .runtime import setup_dll_search_path
+from . import __version__, cuda_runtime, formats, hardware, models
+from .runtime import activate, search_dirs, setup_dll_search_path
 from .server import Server
 from .store import ModelStore
 from .transcriber import Options, Transcriber
@@ -41,12 +41,14 @@ def serve(models_dir: Path) -> int:
             sys.stdout.flush()
 
     system = hardware.detect()
+    cuda_dir = cuda_runtime.default_dir()
     server = Server(
         write,
         system,
         Transcriber(system, str(models_dir)),
         ModelStore(models_dir),
         version=__version__,
+        cuda=cuda_runtime.Runtime(cuda_dir, system.device, lambda: search_dirs([cuda_dir]), activate),
     )
     try:
         for line in sys.stdin:
@@ -82,7 +84,7 @@ def transcribe_cli(args: argparse.Namespace, models_dir: Path) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    setup_dll_search_path()
+    setup_dll_search_path([cuda_runtime.default_dir()])
     parser = argparse.ArgumentParser(prog="transcriber-engine")
     parser.add_argument("--models-dir", type=Path, default=default_models_dir())
     sub = parser.add_subparsers(dest="command")

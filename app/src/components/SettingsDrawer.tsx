@@ -87,7 +87,7 @@ export function SettingsDrawer(p: Props) {
                   }
                 />
                 {!m.downloaded &&
-                  (p.download?.model === m.name && !p.download.error ? (
+                  (p.download?.kind === "model" && p.download.model === m.name && !p.download.error ? (
                     <Caption1 className={mergeClasses(s.note, s.nowrap)}>
                       {p.download.total ? `${Math.round((p.download.downloaded / p.download.total) * 100)}%` : "..."}
                     </Caption1>
