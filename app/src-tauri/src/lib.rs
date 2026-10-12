@@ -65,6 +65,7 @@ fn engine_restart(engine: State<'_, Engine>) {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             let handle = app.handle().clone();
             let engine = Engine::new(engine_command(&handle), TauriSink(handle));

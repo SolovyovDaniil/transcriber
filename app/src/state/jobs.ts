@@ -12,6 +12,7 @@ export type Job = {
   segments: Segment[];
   error?: string;
   srtPath?: string | null;
+  edited: boolean; // text changed since the SRT was last written
 };
 
 export type JobsState = { order: string[]; byId: Record<string, Job> };
@@ -32,7 +33,9 @@ export function applyEvent(state: JobsState, event: EngineEvent): JobsState {
       const { job_id, path, status, error } = event.data;
       if (!state.byId[job_id]) {
         // The engine announces "queued" before transcribe.start returns, so status creates jobs.
-        const job: Job = { id: job_id, path, status, fraction: 0, done: 0, total: 0, segments: [], error };
+        const job: Job = {
+          id: job_id, path, status, fraction: 0, done: 0, total: 0, segments: [], error, edited: false,
+        };
         return { order: [...state.order, job_id], byId: { ...state.byId, [job_id]: job } };
       }
       return update(state, job_id, () => ({ status, error }));
@@ -69,11 +72,29 @@ export function engineLost(state: JobsState, reason: string): JobsState {
   return next;
 }
 
-/** C:\rec\talk.mp4 -> C:\rec\talk.srt */
-export function srtPathFor(path: string): string {
-  const sep = Math.max(path.lastIndexOf("\\"), path.lastIndexOf("/"));
-  const dot = path.lastIndexOf(".");
-  return (dot > sep + 1 ? path.slice(0, dot) : path) + ".srt";
+export function editSegment(state: JobsState, id: string, index: number, text: string): JobsState {
+  const seg = state.byId[id]?.segments[index];
+  if (!seg || seg.text === text) return state;
+  return update(state, id, (job) => {
+    const segments = job.segments.slice();
+    segments[index] = { ...segments[index], text };
+    return { segments, edited: true };
+  });
+}
+
+export function markSaved(state: JobsState, id: string, srtPath: string): JobsState {
+  return update(state, id, () => ({ edited: false, srtPath }));
+}
+
+export function removeJob(state: JobsState, id: string): JobsState {
+  if (!state.byId[id]) return state;
+  const byId = { ...state.byId };
+  delete byId[id];
+  return { order: state.order.filter((x) => x !== id), byId };
+}
+
+export function isActive(job: Job): boolean {
+  return ACTIVE.includes(job.status);
 }
 
 export const MEDIA_EXTENSIONS = [

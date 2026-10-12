@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { EngineEvent, Segment } from "../engine/protocol";
-import { applyEvent, emptyJobs, engineLost, isMedia, srtPathFor } from "./jobs";
+import { applyEvent, editSegment, emptyJobs, engineLost, isMedia, markSaved, removeJob } from "./jobs";
 
 const seg = (start: number, text: string): Segment => ({ start, end: start + 1, text, words: [] });
 
@@ -75,16 +75,39 @@ describe("engineLost", () => {
   });
 });
 
-describe("paths", () => {
-  it.each([
-    ["C:\\rec\\talk.mp4", "C:\\rec\\talk.srt"],
-    ["C:\\rec.v2\\talk", "C:\\rec.v2\\talk.srt"],
-    ["/home/u/лекция.part1.mkv", "/home/u/лекция.part1.srt"],
-    ["C:\\rec\\.hidden", "C:\\rec\\.hidden.srt"],
-  ])("srtPathFor(%s)", (input, expected) => {
-    expect(srtPathFor(input)).toBe(expected);
+describe("editing", () => {
+  const finished = () =>
+    run(queued(), {
+      name: "job.done",
+      data: {
+        job_id: "j1",
+        transcript: { language: "ru", duration: 2, segments: [seg(0, "Превет"), seg(1, "мир")] },
+        srt_path: "C:\\rec\\a.srt",
+      },
+    });
+
+  it("edits one segment and marks the job edited until saved", () => {
+    let s = editSegment(finished(), "j1", 0, "Привет");
+    expect(s.byId.j1.segments.map((x) => x.text)).toEqual(["Привет", "мир"]);
+    expect(s.byId.j1.edited).toBe(true);
+    s = markSaved(s, "j1", "D:\\out\\a.srt");
+    expect(s.byId.j1).toMatchObject({ edited: false, srtPath: "D:\\out\\a.srt" });
   });
 
+  it("ignores no-op edits and bad indexes", () => {
+    const s = finished();
+    expect(editSegment(s, "j1", 1, "мир")).toBe(s);
+    expect(editSegment(s, "j1", 9, "x")).toBe(s);
+  });
+
+  it("removes a job", () => {
+    const s = removeJob(run(queued("a"), queued("b")), "a");
+    expect(s.order).toEqual(["b"]);
+    expect(s.byId.a).toBeUndefined();
+  });
+});
+
+describe("media", () => {
   it("recognises media files", () => {
     expect(isMedia("C:\\a\\B.MP4")).toBe(true);
     expect(isMedia("C:\\a\\notes.txt")).toBe(false);

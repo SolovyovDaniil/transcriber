@@ -11,7 +11,7 @@ large-v3 на видеокарте (рассчитано на RTX 4060, 8 ГБ).
 | Папка | Что внутри | Статус |
 |---|---|---|
 | `engine/` | Python-движок на faster-whisper, протокол JSON Lines по stdio | этапы 1–2 готовы |
-| `app/` | Оболочка Tauri 2 (Rust) + UI на React | этап 3 готов; дизайн и UI — этапы 4–5 |
+| `app/` | Оболочка Tauri 2 (Rust) + интерфейс на React и Fluent UI | этапы 3-5 готовы, дизайн: [docs/design.md](docs/design.md) |
 
 ## Движок: быстрый старт (Windows)
 
