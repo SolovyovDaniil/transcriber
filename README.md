@@ -1,6 +1,6 @@
 # Transcriber
 
-Офлайн-приложение для Windows, которое расшифровывает аудио и видео моделью Whisper
+Офлайн-приложение для Windows: русская речь из аудио и видео → субтитры SRT. Модель Whisper
 large-v3 на видеокарте (рассчитано на RTX 4060, 8 ГБ).
 
 - Техническое задание: [docs/TZ.md](docs/TZ.md)
@@ -18,14 +18,14 @@ large-v3 на видеокарте (рассчитано на RTX 4060, 8 ГБ).
 ```powershell
 cd engine
 py -3.11 -m venv .venv
-.venv\Scripts\pip install -e ".[dev,docx]"
+.venv\Scripts\pip install -e ".[dev]"
 .venv\Scripts\pytest
 
 # Проверить видеокарту и рекомендуемую модель
 .venv\Scripts\transcriber-engine info
 
 # Расшифровать файл (модель скачается при первом запуске, ~3 ГБ для large-v3)
-.venv\Scripts\transcriber-engine transcribe interview.mp3 --language ru --format srt -o interview.srt
+.venv\Scripts\transcriber-engine transcribe interview.mp3   # → interview.srt рядом с файлом
 ```
 
 Для работы на GPU нужны драйвер NVIDIA и библиотеки CUDA 12 (cuBLAS) и cuDNN 9.

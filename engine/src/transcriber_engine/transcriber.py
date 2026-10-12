@@ -11,7 +11,6 @@ from . import models
 from .hardware import SystemInfo
 from .result import Segment, Transcript, Word
 
-TASKS = ("transcribe", "translate")
 TURBO_BATCH_SIZE = 16
 
 
@@ -26,8 +25,7 @@ class OptionsError(ValueError):
 @dataclass(frozen=True)
 class Options:
     model: str = models.DEFAULT_MODEL
-    language: str | None = None  # None = auto-detect
-    task: str = "transcribe"
+    language: str = "ru"  # the app is Russian-only; skipping detection is faster and never misfires
     initial_prompt: str | None = None
     vad_filter: bool = True
     word_timestamps: bool = True
@@ -40,9 +38,6 @@ class Options:
         unknown = set(params) - known
         if unknown:
             raise OptionsError(f"Unknown options: {', '.join(sorted(unknown))}")
-        params = dict(params)
-        if params.get("language") == "auto":
-            params["language"] = None
         opts = cls(**params)
         opts._validate()
         return opts
@@ -50,9 +45,7 @@ class Options:
     def _validate(self) -> None:
         if self.model not in models.CATALOG:
             raise OptionsError(f"Unknown model: {self.model}")
-        if self.task not in TASKS:
-            raise OptionsError(f"Unknown task: {self.task}")
-        if self.language is not None and not isinstance(self.language, str):
+        if not isinstance(self.language, str) or not self.language:
             raise OptionsError("language must be a string")
         if self.initial_prompt is not None and not isinstance(self.initial_prompt, str):
             raise OptionsError("initial_prompt must be a string")
@@ -163,7 +156,6 @@ class Transcriber:
     def _run(self, model, audio, options: Options, on_progress, on_segment, is_cancelled) -> Transcript:
         kwargs = dict(
             language=options.language,
-            task=options.task,
             initial_prompt=options.initial_prompt,
             beam_size=options.beam_size,
             vad_filter=options.vad_filter,

@@ -1,14 +1,12 @@
-"""Export a transcript to TXT, SRT, VTT, JSON and DOCX."""
+"""Export a transcript to SRT (the main output) or plain TXT."""
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from .result import Transcript
 
-TEXT_FORMATS = ("txt", "txt_timestamps", "srt", "vtt", "json")
-ALL_FORMATS = (*TEXT_FORMATS, "docx")
+FORMATS = ("srt", "txt")
 
 
 def timestamp(seconds: float, ms_sep: str = ",") -> str:
@@ -17,10 +15,6 @@ def timestamp(seconds: float, ms_sep: str = ",") -> str:
     minutes, rest = divmod(rest, 60_000)
     secs, ms = divmod(rest, 1000)
     return f"{hours:02d}:{minutes:02d}:{secs:02d}{ms_sep}{ms:03d}"
-
-
-def _short_timestamp(seconds: float) -> str:
-    return timestamp(seconds)[:8]
 
 
 def _cues(t: Transcript):
@@ -39,52 +33,20 @@ def to_srt(t: Transcript) -> str:
     return "\n".join(blocks)
 
 
-def to_vtt(t: Transcript) -> str:
-    blocks = [
-        f"{timestamp(seg.start, '.')} --> {timestamp(seg.end, '.')}\n{text}\n"
-        for seg, text in _cues(t)
-    ]
-    return "WEBVTT\n\n" + "\n".join(blocks)
-
-
-def to_txt(t: Transcript, timestamps: bool = False) -> str:
-    lines = [
-        f"[{_short_timestamp(seg.start)}] {text}" if timestamps else text
-        for seg, text in _cues(t)
-    ]
-    return "".join(line + "\n" for line in lines)
-
-
-def to_json(t: Transcript) -> str:
-    return json.dumps(t.to_dict(), ensure_ascii=False, indent=2)
+def to_txt(t: Transcript) -> str:
+    return "".join(text + "\n" for _, text in _cues(t))
 
 
 def render(t: Transcript, fmt: str) -> str:
-    renderers = {
-        "txt": to_txt,
-        "txt_timestamps": lambda tr: to_txt(tr, timestamps=True),
-        "srt": to_srt,
-        "vtt": to_vtt,
-        "json": to_json,
-    }
-    if fmt not in renderers:
-        raise ValueError(f"Unknown text format: {fmt}")
-    return renderers[fmt](t)
+    if fmt == "srt":
+        return to_srt(t)
+    if fmt == "txt":
+        return to_txt(t)
+    raise ValueError(f"Unknown format: {fmt}")
 
 
 def write(t: Transcript, fmt: str, path: str | Path) -> Path:
     path = Path(path)
-    if fmt == "docx":
-        _write_docx(t, path)
-    else:
-        path.write_text(render(t, fmt), encoding="utf-8")
+    # utf-8-sig: Windows players and editors (MPC-HC, old Notepad) detect UTF-8 by the BOM.
+    path.write_text(render(t, fmt), encoding="utf-8-sig")
     return path
-
-
-def _write_docx(t: Transcript, path: Path) -> None:
-    import docx  # optional dependency
-
-    document = docx.Document()
-    for seg, text in _cues(t):
-        document.add_paragraph(f"[{_short_timestamp(seg.start)}] {text}")
-    document.save(str(path))

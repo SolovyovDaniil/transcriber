@@ -88,7 +88,7 @@ def test_transcribe_flow(h, tmp_path):
     audio = tmp_path / "talk.mp3"
     audio.write_bytes(b"fake")
 
-    job_id = h.call("transcribe.start", {"path": str(audio), "options": {"language": "ru"}})["result"]["job_id"]
+    job_id = h.call("transcribe.start", {"path": str(audio), "options": {"beam_size": 5}})["result"]["job_id"]
     h.server.wait_jobs()
 
     statuses = [e["status"] for e in h.events("job.status") if e["job_id"] == job_id]
@@ -148,9 +148,9 @@ def test_export(h, tmp_path):
 
 def test_export_unknown_format(h, tmp_path):
     transcript = {"language": "ru", "duration": 0, "segments": []}
-    resp = h.call("export", {"transcript": transcript, "format": "pdf", "path": str(tmp_path / "x")})
+    resp = h.call("export", {"transcript": transcript, "format": "docx", "path": str(tmp_path / "x")})
     assert resp["error"]["code"] == "invalid_params"
-    assert set(formats.ALL_FORMATS) >= {"srt", "docx"}
+    assert formats.FORMATS == ("srt", "txt")
 
 
 def test_unknown_method_and_bad_json(h):

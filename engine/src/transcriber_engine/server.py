@@ -117,7 +117,6 @@ class Server:
                 {
                     "name": m.name,
                     "size_mb": m.size_mb,
-                    "translate": m.translate,
                     "downloaded": self.store.is_downloaded(m.name),
                     "recommended": m.name == recommended,
                 }
@@ -161,7 +160,7 @@ class Server:
     def export(self, params: dict) -> dict:
         transcript = Transcript.from_dict(_require(params, "transcript", dict))
         fmt = _require(params, "format")
-        if fmt not in formats.ALL_FORMATS:
+        if fmt not in formats.FORMATS:
             raise InvalidParams(f"Unknown format: {fmt}")
         path = formats.write(transcript, fmt, _require(params, "path"))
         return {"path": str(path)}

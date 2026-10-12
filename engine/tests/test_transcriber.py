@@ -52,13 +52,12 @@ def test_transcribes_with_large_v3_float16_on_4060():
 
 def test_passes_options_to_model():
     model = FakeModel([])
-    opts = Options(language="en", task="translate", initial_prompt="Kubernetes", beam_size=3)
+    opts = Options(initial_prompt="Kubernetes", beam_size=3)
     Recorder().run(Transcriber(RTX_4060, "/m", load_model=ModelLoader(default=model)), opts)
 
     audio, kwargs = model.calls[0]
     assert audio == "audio.mp3"
-    assert kwargs["language"] == "en"
-    assert kwargs["task"] == "translate"
+    assert kwargs["language"] == "ru"
     assert kwargs["initial_prompt"] == "Kubernetes"
     assert kwargs["beam_size"] == 3
     assert kwargs["vad_filter"] is True
@@ -165,10 +164,11 @@ def test_turbo_on_gpu_uses_batched_pipeline():
     "params",
     [
         {"model": "huge"},
-        {"task": "summarize"},
+        {"task": "translate"},
         {"beam_size": 0},
         {"batch_size": -1},
         {"language": 5},
+        {"language": None},
         {"unknown": 1},
     ],
 )
@@ -178,6 +178,5 @@ def test_options_validation(params):
 
 
 def test_options_from_params():
-    opts = Options.from_params({"model": "large-v3-turbo", "language": "ru", "vad_filter": False})
+    opts = Options.from_params({"model": "large-v3-turbo", "vad_filter": False})
     assert opts == Options(model="large-v3-turbo", language="ru", vad_filter=False)
-    assert Options.from_params({"language": "auto"}).language is None

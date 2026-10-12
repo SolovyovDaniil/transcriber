@@ -12,18 +12,15 @@ class ModelInfo:
     size_mb: int  # download size
     vram_fp16_mb: int  # peak VRAM with float16, beam 5
     vram_int8_mb: int  # peak VRAM with int8_float16
-    translate: bool  # handles task="translate" well
 
 
 CATALOG: dict[str, ModelInfo] = {
     m.name: m
     for m in (
-        ModelInfo("large-v3", "Systran/faster-whisper-large-v3", 3100, 5000, 3000, True),
-        ModelInfo(
-            "large-v3-turbo", "mobiuslabsgmbh/faster-whisper-large-v3-turbo", 1600, 3000, 2000, False
-        ),
-        ModelInfo("medium", "Systran/faster-whisper-medium", 1500, 2500, 1500, True),
-        ModelInfo("small", "Systran/faster-whisper-small", 480, 1200, 800, True),
+        ModelInfo("large-v3", "Systran/faster-whisper-large-v3", 3100, 5000, 3000),
+        ModelInfo("large-v3-turbo", "mobiuslabsgmbh/faster-whisper-large-v3-turbo", 1600, 3000, 2000),
+        ModelInfo("medium", "Systran/faster-whisper-medium", 1500, 2500, 1500),
+        ModelInfo("small", "Systran/faster-whisper-small", 480, 1200, 800),
     )
 }
 

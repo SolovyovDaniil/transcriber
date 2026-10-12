@@ -1,5 +1,3 @@
-import json
-
 import pytest
 
 from transcriber_engine import formats
@@ -43,47 +41,33 @@ def test_srt_skips_blank_segments_and_renumbers():
     assert formats.to_srt(t) == "1\n00:00:01,000 --> 00:00:02,000\nТекст\n"
 
 
-def test_vtt():
-    t = make_transcript(Segment(0.0, 1.0, " Hello"))
-    assert formats.to_vtt(t) == "WEBVTT\n\n00:00:00.000 --> 00:00:01.000\nHello\n"
-
-
-def test_txt_plain_and_timestamped():
+def test_txt():
     t = make_transcript(Segment(0.0, 1.0, " Один."), Segment(65.0, 66.0, " Два."))
     assert formats.to_txt(t) == "Один.\nДва.\n"
-    assert formats.to_txt(t, timestamps=True) == "[00:00:00] Один.\n[00:01:05] Два.\n"
 
 
 def test_empty_transcript():
     t = make_transcript()
     assert formats.to_srt(t) == ""
-    assert formats.to_vtt(t) == "WEBVTT\n\n"
     assert formats.to_txt(t) == ""
 
 
-def test_json_roundtrip():
+def test_transcript_dict_roundtrip():
     t = make_transcript(Segment(0.0, 1.0, "Hi", words=(Word(0.0, 1.0, "Hi", 0.9),)))
-    data = json.loads(formats.to_json(t))
-    assert Transcript.from_dict(data) == t
+    assert Transcript.from_dict(t.to_dict()) == t
 
 
 def test_render_by_name_and_unknown():
     t = make_transcript(Segment(0.0, 1.0, "x"))
     assert formats.render(t, "srt") == formats.to_srt(t)
     with pytest.raises(ValueError):
-        formats.render(t, "pdf")
+        formats.render(t, "vtt")
 
 
-def test_write_docx(tmp_path):
-    docx = pytest.importorskip("docx")
-    t = make_transcript(Segment(0.0, 1.0, " Абзац"))
-    path = tmp_path / "out.docx"
-    formats.write(t, "docx", path)
-    assert [p.text for p in docx.Document(str(path)).paragraphs] == ["[00:00:00] Абзац"]
-
-
-def test_write_text_format_utf8(tmp_path):
+def test_write_srt_utf8_with_bom(tmp_path):
     t = make_transcript(Segment(0.0, 1.0, "Ёжик"))
     path = tmp_path / "out.srt"
     formats.write(t, "srt", path)
-    assert path.read_text(encoding="utf-8") == formats.to_srt(t)
+    raw = path.read_bytes()
+    assert raw.startswith(b"\xef\xbb\xbf")
+    assert raw[3:].decode("utf-8") == formats.to_srt(t)

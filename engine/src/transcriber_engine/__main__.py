@@ -1,7 +1,7 @@
 """Entry point.
 
     transcriber-engine                 # stdio JSON Lines server for the desktop app
-    transcriber-engine transcribe FILE [--model large-v3] [--language ru] [--format srt]
+    transcriber-engine transcribe FILE [--model large-v3] [--format srt] [-o OUT]
     transcriber-engine info
 """
 
@@ -59,7 +59,8 @@ def serve(models_dir: Path) -> int:
 def transcribe_cli(args: argparse.Namespace, models_dir: Path) -> int:
     system = hardware.detect()
     model = args.model or models.recommend(system.device, system.vram_total_mb)
-    options = Options.from_params({"model": model, "language": args.language, "task": args.task})
+    options = Options(model=model)
+    output = Path(args.output) if args.output else Path(args.file).with_suffix("." + args.format)
     print(f"device={system.device} model={model}", file=sys.stderr)
 
     def progress(done: float, total: float) -> None:
@@ -74,15 +75,8 @@ def transcribe_cli(args: argparse.Namespace, models_dir: Path) -> int:
         is_cancelled=lambda: False,
     )
     print(file=sys.stderr)
-    if args.output:
-        formats.write(transcript, args.format, args.output)
-        print(f"saved {args.output}", file=sys.stderr)
-    elif args.format == "docx":
-        print("--output is required for docx", file=sys.stderr)
-        return 2
-    else:
-        sys.stdout.reconfigure(encoding="utf-8")
-        sys.stdout.write(formats.render(transcript, args.format))
+    formats.write(transcript, args.format, output)
+    print(f"saved {output}", file=sys.stderr)
     return 0
 
 
@@ -95,10 +89,8 @@ def main(argv: list[str] | None = None) -> int:
     t = sub.add_parser("transcribe", help="transcribe one file")
     t.add_argument("file")
     t.add_argument("--model", choices=list(models.CATALOG))
-    t.add_argument("--language", default="auto")
-    t.add_argument("--task", choices=["transcribe", "translate"], default="transcribe")
-    t.add_argument("--format", choices=list(formats.ALL_FORMATS), default="txt")
-    t.add_argument("--output", "-o")
+    t.add_argument("--format", choices=list(formats.FORMATS), default="srt")
+    t.add_argument("--output", "-o", help="default: next to FILE with the format's extension")
     args = parser.parse_args(argv)
 
     if args.command == "transcribe":
