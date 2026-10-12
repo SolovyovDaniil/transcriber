@@ -1,0 +1,19 @@
+/* Placeholder styles until the taste design pass. */
+:root { font-family: system-ui, "Segoe UI", sans-serif; color-scheme: light dark; }
+body { margin: 0; }
+.app { display: flex; flex-direction: column; height: 100vh; }
+.bar, .controls { display: flex; gap: 12px; align-items: center; padding: 10px 16px; border-bottom: 1px solid #8884; }
+.muted { opacity: 0.6; font-size: 13px; }
+.error { color: #d33; padding: 6px 16px; white-space: pre-wrap; }
+.error.small { padding: 0; font-size: 12px; }
+.engine-running { color: #2a2; } .engine-failed { color: #d33; }
+.split { flex: 1; display: grid; grid-template-columns: 320px 1fr; min-height: 0; }
+.queue { list-style: none; margin: 0; padding: 0; overflow: auto; border-right: 1px solid #8884; }
+.queue li { padding: 10px 16px; border-bottom: 1px solid #8882; cursor: pointer; }
+.queue li.active { background: #8882; }
+.row { display: flex; justify-content: space-between; gap: 8px; }
+.name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+progress { width: 100%; }
+.transcript { overflow: auto; padding: 12px 20px; line-height: 1.5; }
+.ts { font-variant-numeric: tabular-nums; opacity: 0.5; margin-right: 6px; }
+button.small { font-size: 12px; margin-top: 4px; }

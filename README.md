@@ -11,7 +11,7 @@ large-v3 на видеокарте (рассчитано на RTX 4060, 8 ГБ).
 | Папка | Что внутри | Статус |
 |---|---|---|
 | `engine/` | Python-движок на faster-whisper, протокол JSON Lines по stdio | этапы 1–2 готовы |
-| `app/` | Оболочка Tauri 2 + UI на React | этапы 3–5 |
+| `app/` | Оболочка Tauri 2 (Rust) + UI на React | этап 3 готов; дизайн и UI — этапы 4–5 |
 
 ## Движок: быстрый старт (Windows)
 
@@ -48,3 +48,22 @@ dist\transcriber-engine\transcriber-engine.exe info
 
 Готовая сборка (папка `transcriber-engine/` с DLL от CUDA и cuDNN) также собирается
 в GitHub Actions — артефакт `transcriber-engine-windows` в workflow `engine`.
+
+## Приложение: запуск в режиме разработки (Windows)
+
+Нужны Node.js 22, Rust (stable) и движок, установленный в `engine/.venv` (см. выше) —
+в отладочной сборке приложение запускает его как `python -m transcriber_engine`.
+
+```powershell
+cd app
+npm ci
+npx tauri dev
+```
+
+Тесты: `npx vitest run` (UI-логика) и `cargo test` в `app/src-tauri` (мост к движку).
+
+## Установщик
+
+`npx tauri build --config src-tauri/tauri.release.conf.json` после сборки движка в
+`engine/dist/` кладёт движок внутрь приложения и собирает NSIS-установщик.
+В CI это делает workflow `app` — артефакт `transcriber-setup-windows`.

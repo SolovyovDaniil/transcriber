@@ -14,6 +14,12 @@ from .result import Transcript
 from .transcriber import Options, OptionsError, Transcriber
 
 
+@dataclasses.dataclass(frozen=True)
+class JobSpec:
+    options: Options
+    srt_path: str | None  # where to save the SRT when the job finishes
+
+
 class InvalidParams(Exception):
     pass
 
@@ -149,9 +155,12 @@ class Server:
     def transcribe_start(self, params: dict) -> dict:
         path = _require(params, "path")
         options = Options.from_params(params.get("options") or {})
+        srt_path = params.get("srt_path")
+        if srt_path is not None and not isinstance(srt_path, str):
+            raise InvalidParams("'srt_path' must be a string")
         if not os.path.isfile(path):
             raise NotFound(f"File not found: {path}")
-        job = self.jobs.submit(path, options)
+        job = self.jobs.submit(path, JobSpec(options, srt_path))
         return {"job_id": job.id}
 
     def transcribe_cancel(self, params: dict) -> dict:
@@ -172,19 +181,27 @@ class Server:
             fraction = round(done / total, 4) if total > 0 else 1.0
             self._emit("job.progress", {"job_id": job.id, "done": done, "total": total, "fraction": fraction})
 
-        return self.transcriber.transcribe(
+        spec: JobSpec = job.options
+        transcript = self.transcriber.transcribe(
             job.path,
-            job.options,
+            spec.options,
             on_progress=progress,
             on_segment=lambda seg: self._emit("job.segment", {"job_id": job.id, "segment": seg.to_dict()}),
             on_reset=lambda ct: self._emit("job.reset", {"job_id": job.id, "compute_type": ct}),
             is_cancelled=job.cancel_requested.is_set,
         )
+        if spec.srt_path:
+            formats.write(transcript, "srt", spec.srt_path)  # failure marks the job as error
+        return transcript
 
     def _job_status(self, job: Job) -> None:
         data = {"job_id": job.id, "path": job.path, "status": job.status.value}
         if job.status == Status.ERROR:
             data["error"] = job.error
         if job.status == Status.DONE:
-            self._emit("job.done", {"job_id": job.id, "transcript": job.result.to_dict()})
+            spec: JobSpec = job.options
+            self._emit(
+                "job.done",
+                {"job_id": job.id, "transcript": job.result.to_dict(), "srt_path": spec.srt_path},
+            )
         self._emit("job.status", data)

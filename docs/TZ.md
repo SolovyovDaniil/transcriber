@@ -119,7 +119,7 @@
 | `system.info` | GPU, VRAM, рекомендуемая модель, цепочка `compute_type`, версия движка |
 | `models.list` | каталог моделей и статус (скачана / нет, рекомендована) |
 | `models.download` | скачать модель в фоне (события `model.*`) |
-| `transcribe.start` | поставить файл в очередь, вернуть `job_id` |
+| `transcribe.start` | поставить файл в очередь (`path`, `options`, `srt_path` — куда движок сам сохранит SRT по завершении), вернуть `job_id` |
 | `transcribe.cancel` | отменить задание (ожидающее или текущее) |
 | `export` | сохранить (возможно, отредактированную) расшифровку в SRT или TXT |
 | `shutdown` | корректно завершить движок |
@@ -130,7 +130,7 @@
 | `job.progress` | `job_id`, `done`, `total` (секунды аудио), `fraction` 0..1 |
 | `job.segment` | `job_id`, `segment` (start, end, text, words) |
 | `job.reset` | `job_id`, `compute_type` — не хватило VRAM, задание перезапущено с более лёгкой точностью; UI очищает сегменты |
-| `job.done` | `job_id`, `transcript` (language, duration, segments) |
+| `job.done` | `job_id`, `transcript` (language, duration, segments), `srt_path` |
 | `model.progress` | `model`, `downloaded`, `total` (байты) |
 | `model.done` / `model.error` | `model`, `error` |
 

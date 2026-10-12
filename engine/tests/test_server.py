@@ -98,6 +98,7 @@ def test_transcribe_flow(h, tmp_path):
     done = h.events("job.done")[0]
     assert done["job_id"] == job_id
     assert done["transcript"]["language"] == "ru"
+    assert done["srt_path"] is None
     assert h.model.calls[0][1]["language"] == "ru"
 
 
@@ -166,3 +167,25 @@ def test_missing_param(h):
 def test_shutdown(h):
     assert h.server.handle_line('{"id": 1, "method": "shutdown"}') is False
     assert h.response(1)["result"] == {"ok": True}
+
+
+def test_transcribe_saves_srt_when_asked(h, tmp_path):
+    audio = tmp_path / "лекция.mp4"
+    audio.write_bytes(b"x")
+    srt = tmp_path / "лекция.srt"
+    h.call("transcribe.start", {"path": str(audio), "srt_path": str(srt)})
+    h.server.wait_jobs()
+
+    assert h.events("job.done")[0]["srt_path"] == str(srt)
+    text = srt.read_text(encoding="utf-8-sig")
+    assert "00:00:00,000 --> 00:00:01,000" in text and "Привет" in text
+
+
+def test_transcribe_unwritable_srt_path_fails_job(h, tmp_path):
+    audio = tmp_path / "a.mp3"
+    audio.write_bytes(b"x")
+    h.call("transcribe.start", {"path": str(audio), "srt_path": str(tmp_path / "missing-dir" / "a.srt")})
+    h.server.wait_jobs()
+
+    assert h.events("job.status")[-1]["status"] == "error"
+    assert h.events("job.done") == []
